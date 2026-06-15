@@ -6,11 +6,8 @@
   // ----- DOM -----
   const graph = document.getElementById("graph");
   const dot = document.getElementById("dot");
-  const valX = document.getElementById("valX");
-  const valY = document.getElementById("valY");
-  const note = document.getElementById("note");
-  const saveBtn = document.getElementById("saveBtn");
-  const saveHint = document.getElementById("saveHint");
+  const toast = document.getElementById("toast");
+  const todayCount = document.getElementById("todayCount");
   const historyList = document.getElementById("historyList");
   const emptyState = document.getElementById("emptyState");
   const countEl = document.getElementById("count");
@@ -19,8 +16,8 @@
   const infoPanel = document.getElementById("infoPanel");
 
   // ----- State -----
-  let current = null; // { x, y } in 0..100, or null
   let logs = load();
+  let editingId = null; // id of the entry whose note is being edited
 
   // ----- Storage -----
   function load() {
@@ -40,7 +37,7 @@
     }
   }
 
-  // ----- Graph input -----
+  // ----- Graph input → record instantly on tap -----
   function pickPoint(evt) {
     const rect = graph.getBoundingClientRect();
     const px = clamp(evt.clientX - rect.left, 0, rect.width);
@@ -51,23 +48,18 @@
     // Y: bottom=0(suppress) -> top=100(assert) — screen Y is inverted
     const y = Math.round((1 - py / rect.height) * 100);
 
-    current = { x, y };
-    renderDot();
-    updateSaveState();
+    renderDot(x, y);
+    save(x, y);
   }
 
-  function renderDot() {
-    if (!current) {
-      dot.hidden = true;
-      valX.textContent = "—";
-      valY.textContent = "—";
-      return;
-    }
+  function renderDot(x, y) {
     dot.hidden = false;
-    dot.style.left = current.x + "%";
-    dot.style.top = 100 - current.y + "%";
-    valX.textContent = current.x;
-    valY.textContent = current.y;
+    dot.style.left = x + "%";
+    dot.style.top = 100 - y + "%";
+    dot.classList.remove("pulse");
+    // restart the pulse animation to confirm the tap landed
+    void dot.offsetWidth;
+    dot.classList.add("pulse");
   }
 
   graph.addEventListener("pointerdown", (e) => {
@@ -75,45 +67,38 @@
     pickPoint(e);
   });
 
-  // ----- Save -----
-  function updateSaveState() {
-    const ready = current !== null;
-    saveBtn.disabled = !ready;
-    if (ready) {
-      saveHint.textContent = "保存できます";
-      saveHint.classList.add("ok");
-    } else {
-      saveHint.textContent = "グラフ上の点を選択してください";
-      saveHint.classList.remove("ok");
-    }
-  }
-
-  function save() {
-    if (!current) return;
+  // ----- Save (called immediately on tap) -----
+  function save(x, y) {
     const entry = {
       id: String(Date.now()),
       timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
-      x: current.x,
-      y: current.y,
-      note: note.value.trim(),
+      x,
+      y,
+      note: "",
     };
     logs.unshift(entry);
     persist();
     renderHistory();
-
-    // reset input affordances
-    current = null;
-    note.value = "";
-    renderDot();
-    updateSaveState();
-    saveHint.textContent = "記録しました";
-    saveHint.classList.add("ok");
+    const nth = logs.filter((l) => isToday(l.timestamp)).length;
+    showToast(`記録しました（今日 ${nth} 件目）`);
   }
 
-  saveBtn.addEventListener("click", save);
-  note.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !saveBtn.disabled) save();
-  });
+  // ----- Toast -----
+  let toastTimer = null;
+  function showToast(msg) {
+    toast.innerHTML = `<i data-lucide="check"></i><span>${escapeHtml(msg)}</span>`;
+    toast.hidden = false;
+    refreshIcons();
+    // restart enter animation
+    toast.classList.remove("show");
+    void toast.offsetWidth;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove("show");
+      toast.hidden = true;
+    }, 1600);
+  }
 
   // ----- History -----
   function formatTime(iso) {
@@ -126,51 +111,107 @@
     );
   }
 
+  function isToday(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return false;
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth() === now.getMonth() &&
+           d.getDate() === now.getDate();
+  }
+
   function renderHistory() {
     historyList.innerHTML = "";
     countEl.textContent = String(logs.length);
+    todayCount.textContent = String(logs.filter((l) => isToday(l.timestamp)).length);
     copyBtn.disabled = logs.length === 0;
     emptyState.hidden = logs.length > 0;
 
     for (const item of logs) {
-      const li = document.createElement("li");
-      li.className = "history-item";
-
-      const coords = document.createElement("div");
-      coords.className = "hi-coords";
-      coords.innerHTML =
-        `<span class="hi-xy">${item.x}<span class="hi-xy-key">X</span></span>` +
-        `<span class="hi-xy">${item.y}<span class="hi-xy-key">Y</span></span>`;
-
-      const body = document.createElement("div");
-      body.className = "hi-body";
-      const time = document.createElement("span");
-      time.className = "hi-time";
-      time.textContent = formatTime(item.timestamp);
-      const noteEl = document.createElement("span");
-      if (item.note) {
-        noteEl.className = "hi-note";
-        noteEl.textContent = item.note;
-      } else {
-        noteEl.className = "hi-note empty";
-        noteEl.textContent = "メモなし";
-      }
-      body.append(time, noteEl);
-
-      const del = document.createElement("button");
-      del.className = "hi-del";
-      del.type = "button";
-      del.setAttribute("aria-label", "削除");
-      del.innerHTML = '<i data-lucide="trash-2"></i>';
-      del.addEventListener("click", () => removeLog(item.id));
-
-      li.append(coords, body, del);
-      historyList.appendChild(li);
+      historyList.appendChild(renderItem(item));
     }
     refreshIcons();
   }
 
+  function renderItem(item) {
+    const li = document.createElement("li");
+    li.className = "history-item";
+
+    const coords = document.createElement("div");
+    coords.className = "hi-coords";
+    coords.innerHTML =
+      `<span class="hi-xy"><i data-lucide="${item.x >= 50 ? "smile" : "frown"}"></i>${item.x}</span>` +
+      `<span class="hi-xy"><i data-lucide="${item.y >= 50 ? "megaphone" : "megaphone-off"}"></i>${item.y}</span>`;
+
+    const body = document.createElement("div");
+    body.className = "hi-body";
+    const time = document.createElement("span");
+    time.className = "hi-time";
+    time.textContent = formatTime(item.timestamp);
+    body.append(time, editingId === item.id ? noteEditor(item) : noteDisplay(item));
+
+    const del = document.createElement("button");
+    del.className = "hi-del";
+    del.type = "button";
+    del.setAttribute("aria-label", "削除");
+    del.innerHTML = '<i data-lucide="trash-2"></i>';
+    del.addEventListener("click", () => removeLog(item.id));
+
+    li.append(coords, body, del);
+    return li;
+  }
+
+  // A tappable note line; clicking it opens the inline editor.
+  function noteDisplay(item) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = item.note ? "hi-note" : "hi-note empty";
+    btn.innerHTML = item.note
+      ? `<span>${escapeHtml(item.note)}</span><i data-lucide="pencil"></i>`
+      : `<i data-lucide="plus"></i><span>メモを追加</span>`;
+    btn.addEventListener("click", () => startEdit(item.id));
+    return btn;
+  }
+
+  // Inline text input replacing the note line while editing.
+  function noteEditor(item) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "hi-note-input";
+    input.value = item.note;
+    input.placeholder = "メモを入力…";
+    input.maxLength = 140;
+    input.autocomplete = "off";
+
+    const commit = () => commitEdit(item.id, input.value);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); commit(); }
+      else if (e.key === "Escape") { editingId = null; renderHistory(); }
+    });
+    input.addEventListener("blur", commit);
+    // focus after it's inserted into the DOM
+    requestAnimationFrame(() => { input.focus(); });
+    return input;
+  }
+
+  function startEdit(id) {
+    editingId = id;
+    renderHistory();
+  }
+
+  function commitEdit(id, value) {
+    if (editingId !== id) return; // already committed/cancelled
+    const entry = logs.find((l) => l.id === id);
+    if (entry) {
+      entry.note = value.trim();
+      persist();
+    }
+    editingId = null;
+    renderHistory();
+  }
+
   function removeLog(id) {
+    if (editingId === id) editingId = null;
     logs = logs.filter((l) => l.id !== id);
     persist();
     renderHistory();
@@ -220,6 +261,11 @@
 
   // ----- Helpers -----
   function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
   function refreshIcons() {
     if (window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
@@ -227,8 +273,6 @@
   }
 
   // ----- Init -----
-  renderDot();
-  updateSaveState();
   renderHistory();
   refreshIcons();
 
@@ -236,6 +280,14 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("./sw.js").catch(() => {});
+    });
+    // When a new SW takes control (after an asset/cache-version update),
+    // reload once so a normal reload shows the latest assets too.
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
     });
   }
 })();

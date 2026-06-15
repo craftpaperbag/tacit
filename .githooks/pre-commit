@@ -1,0 +1,34 @@
+#!/bin/sh
+# Auto-bump the service worker cache version when any cached asset changes.
+#
+# The version is a short content hash of the cached assets, so it changes
+# only when their contents change — no manual counter to maintain.
+# sw.js itself is excluded from the hash to avoid a circular dependency.
+
+set -e
+
+# Assets that are listed in sw.js's ASSETS (excluding sw.js itself).
+ASSET_GLOB='^(index\.html|style\.css|app\.js|manifest\.json|icons/)'
+
+# Do nothing unless one of those assets is part of this commit.
+if ! git diff --cached --name-only | grep -qE "$ASSET_GLOB"; then
+  exit 0
+fi
+
+# Hash the staged content of every tracked asset (deterministic ordering).
+FILES=$(git ls-files 'index.html' 'style.css' 'app.js' 'manifest.json' 'icons/*' | sort)
+HASH=$(for f in $FILES; do git show ":$f" 2>/dev/null; done | shasum | cut -c1-8)
+
+NEW_LINE="const CACHE = \"tacit-$HASH\";"
+
+# Skip if already up to date.
+if grep -qF "$NEW_LINE" sw.js; then
+  exit 0
+fi
+
+# Rewrite the CACHE line and re-stage sw.js.
+sed -i.bak "s/^const CACHE = .*/$NEW_LINE/" sw.js
+rm -f sw.js.bak
+git add sw.js
+
+echo "pre-commit: bumped sw.js cache to tacit-$HASH"
