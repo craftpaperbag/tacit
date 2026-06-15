@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1b2027" />
+  <meta name="description" content="状況の雰囲気と自己主張の度合いを最小の認知負荷で記録するライフログ" />
+  <title>Tacit</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./icons/icon.svg" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 1. Header -->
+    <header class="header">
+      <h1 class="brand">Tacit</h1>
+      <button id="infoBtn" class="icon-btn" type="button" aria-label="情報" aria-expanded="false">
+        <i data-lucide="info"></i>
+      </button>
+    </header>
+
+    <p id="infoPanel" class="info-panel" hidden>
+      グラフ上をタップして「状況の雰囲気」と「自己主張の度合い」を記録します。
+      横軸は雰囲気の良し悪し、縦軸は主張の強さです。データは端末内にのみ保存されます。
+    </p>
+
+    <main>
+      <!-- 2. 2D coordinate graph (core) -->
+      <section class="graph-section" aria-labelledby="graph-label">
+        <h2 id="graph-label" class="section-title">記録</h2>
+
+        <div class="graph-wrap">
+          <span class="axis-label axis-y-top">主張</span>
+          <span class="axis-label axis-y-bottom">抑制</span>
+          <span class="axis-label axis-x-left">悪い</span>
+          <span class="axis-label axis-x-right">良い</span>
+
+          <div id="graph" class="graph" role="application"
+               aria-label="2D入力グラフ。タップして座標を選択します。">
+            <span class="grid-line grid-v"></span>
+            <span class="grid-line grid-h"></span>
+            <span id="dot" class="dot" hidden></span>
+          </div>
+        </div>
+
+        <div class="readout" aria-live="polite">
+          <div class="readout-item">
+            <span class="readout-key">雰囲気 (X)</span>
+            <span id="valX" class="readout-val">—</span>
+          </div>
+          <div class="readout-item">
+            <span class="readout-key">主張 (Y)</span>
+            <span id="valY" class="readout-val">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Note input + save -->
+      <section class="input-section" aria-labelledby="note-label">
+        <label id="note-label" class="field-label" for="note">メモ（任意）</label>
+        <div class="input-row">
+          <input id="note" type="text" class="text-field"
+                 placeholder="短いメモ…" autocomplete="off" maxlength="140" />
+          <button id="saveBtn" class="btn btn-primary" type="button" disabled>
+            <i data-lucide="save"></i><span>保存</span>
+          </button>
+        </div>
+        <p id="saveHint" class="hint">グラフ上の点を選択してください</p>
+      </section>
+
+      <!-- 4. History -->
+      <section class="history-section" aria-labelledby="history-label">
+        <div class="section-head">
+          <h2 id="history-label" class="section-title">履歴</h2>
+          <span id="count" class="count">0</span>
+        </div>
+        <ul id="historyList" class="history-list"></ul>
+        <p id="emptyState" class="empty-state">まだ記録がありません。</p>
+      </section>
+
+      <!-- 5. Export -->
+      <section class="export-section">
+        <button id="copyBtn" class="btn btn-ghost" type="button" disabled>
+          <i data-lucide="copy"></i><span id="copyLabel">JSONとしてコピー</span>
+        </button>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

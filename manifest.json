@@ -1,0 +1,26 @@
+{
+  "name": "Tacit",
+  "short_name": "Tacit",
+  "description": "状況の雰囲気と自己主張の度合いを最小の認知負荷で記録するライフログ",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b2027",
+  "theme_color": "#1b2027",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
