@@ -13,6 +13,8 @@
   --accent-soft:oklch(0.62 0.072 250 / 0.16);
   --accent-fg:  oklch(0.16 0.01 250);
   --success:    oklch(0.70 0.085 160);
+  --danger:     oklch(0.64 0.15 25);
+  --danger-soft:oklch(0.64 0.15 25 / 0.12);
 
   --radius: 10px;
   --space: 8px;
@@ -232,6 +234,12 @@ main {
 }
 .btn-ghost:not(:disabled):hover { background: var(--surface); color: var(--text); }
 .btn-ghost.copied { color: var(--success); border-color: var(--success); }
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn-danger:not(:disabled):hover { background: var(--danger-soft); }
 
 .hint { font-size: 12px; color: var(--text-faint); min-height: 1em; }
 .hint.ok { color: var(--success); }
@@ -358,6 +366,9 @@ main {
 .dialog {
   width: min(92vw, 360px);
   padding: 0;
+  /* the global `* { margin: 0 }` reset cancels the UA stylesheet's
+     `margin: auto`, so restore it to center the modal on screen */
+  margin: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -410,6 +421,19 @@ main {
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
+
+/* ---------- Confirmation dialog ---------- */
+.dialog-text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.dialog-actions .btn { width: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

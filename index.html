@@ -107,6 +107,29 @@
           </button>
         </div>
       </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <span class="setting-name">すべてのデータを削除</span>
+          <span class="setting-desc">この端末に保存された記録をすべて消去します</span>
+        </div>
+        <button id="clearDataBtn" class="btn btn-danger" type="button">
+          <i data-lucide="trash-2"></i>削除
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Delete-all confirmation -->
+  <dialog id="confirmDialog" class="dialog" aria-labelledby="confirmTitle">
+    <div class="dialog-body">
+      <h2 id="confirmTitle" class="dialog-title">すべて削除しますか？</h2>
+      <p class="dialog-text">保存されているすべての記録が完全に削除されます。この操作は取り消せません。</p>
+      <div class="dialog-actions">
+        <button id="confirmCancel" class="btn btn-ghost" type="button">キャンセル</button>
+        <button id="confirmDelete" class="btn btn-danger" type="button">
+          <i data-lucide="trash-2"></i>削除する
+        </button>
+      </div>
     </div>
   </dialog>
 

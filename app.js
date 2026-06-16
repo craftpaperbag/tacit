@@ -24,6 +24,10 @@
   const ghostCountValue = document.getElementById("ghostCountValue");
   const ghostMinus = document.getElementById("ghostMinus");
   const ghostPlus = document.getElementById("ghostPlus");
+  const clearDataBtn = document.getElementById("clearDataBtn");
+  const confirmDialog = document.getElementById("confirmDialog");
+  const confirmCancel = document.getElementById("confirmCancel");
+  const confirmDelete = document.getElementById("confirmDelete");
 
   // ----- State -----
   let logs = load();
@@ -333,6 +337,28 @@
   // click on the backdrop (outside the body) closes the dialog
   settingsDialog.addEventListener("click", (e) => {
     if (e.target === settingsDialog) settingsDialog.close();
+  });
+
+  // ----- Delete all data (with confirmation) -----
+  function clearAllLogs() {
+    logs = [];
+    editingId = null;
+    persist();
+    dot.hidden = true;
+    renderHistory();
+    renderGhosts();
+  }
+  clearDataBtn.addEventListener("click", () => confirmDialog.showModal());
+  confirmCancel.addEventListener("click", () => confirmDialog.close());
+  confirmDelete.addEventListener("click", () => {
+    clearAllLogs();
+    confirmDialog.close();
+    settingsDialog.close();
+    showToast("すべての記録を削除しました");
+  });
+  // click on the backdrop closes (cancels) the confirmation
+  confirmDialog.addEventListener("click", (e) => {
+    if (e.target === confirmDialog) confirmDialog.close();
   });
 
   // ----- Helpers -----
