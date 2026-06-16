@@ -2,6 +2,10 @@
   "use strict";
 
   const STORAGE_KEY = "tacit.logs.v1";
+  const SETTINGS_KEY = "tacit.settings.v1";
+  const GHOST_MIN = 0;
+  const GHOST_MAX = 10;
+  const GHOST_DEFAULT = 3;
 
   // ----- DOM -----
   const graph = document.getElementById("graph");
@@ -14,9 +18,16 @@
   const copyBtn = document.getElementById("copyBtn");
   const infoBtn = document.getElementById("infoBtn");
   const infoPanel = document.getElementById("infoPanel");
+  const settingsBtn = document.getElementById("settingsBtn");
+  const settingsDialog = document.getElementById("settingsDialog");
+  const settingsClose = document.getElementById("settingsClose");
+  const ghostCountValue = document.getElementById("ghostCountValue");
+  const ghostMinus = document.getElementById("ghostMinus");
+  const ghostPlus = document.getElementById("ghostPlus");
 
   // ----- State -----
   let logs = load();
+  let settings = loadSettings();
   let editingId = null; // id of the entry whose note is being edited
 
   // ----- Storage -----
@@ -34,6 +45,26 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
     } catch (e) {
       console.warn("保存に失敗しました", e);
+    }
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      const data = raw ? JSON.parse(raw) : {};
+      const n = Math.round(Number(data.ghostCount));
+      return {
+        ghostCount: Number.isFinite(n) ? clamp(n, GHOST_MIN, GHOST_MAX) : GHOST_DEFAULT,
+      };
+    } catch {
+      return { ghostCount: GHOST_DEFAULT };
+    }
+  }
+  function persistSettings() {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {
+      console.warn("設定の保存に失敗しました", e);
     }
   }
 
@@ -62,6 +93,25 @@
     dot.classList.add("pulse");
   }
 
+  // Show the previous records as faint echoes; older ones fade more. How many
+  // are shown is configurable in settings. When the live dot is visible it
+  // already represents logs[0], so start past it.
+  function renderGhosts() {
+    graph.querySelectorAll(".ghost-dot").forEach((el) => el.remove());
+    const start = dot.hidden ? 0 : 1;
+    const recent = logs.slice(start, start + settings.ghostCount);
+    const TOP = 0.45, BOTTOM = 0.1; // opacity of newest → oldest ghost
+    const step = recent.length > 1 ? (TOP - BOTTOM) / (recent.length - 1) : 0;
+    recent.forEach((item, i) => {
+      const g = document.createElement("span");
+      g.className = "ghost-dot";
+      g.style.left = item.x + "%";
+      g.style.top = 100 - item.y + "%";
+      g.style.opacity = String(TOP - i * step);
+      graph.insertBefore(g, dot); // keep the live dot painted on top
+    });
+  }
+
   graph.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     pickPoint(e);
@@ -79,6 +129,7 @@
     logs.unshift(entry);
     persist();
     renderHistory();
+    renderGhosts();
     const nth = logs.filter((l) => isToday(l.timestamp)).length;
     showToast(`記録しました（今日 ${nth} 件目）`);
   }
@@ -215,6 +266,7 @@
     logs = logs.filter((l) => l.id !== id);
     persist();
     renderHistory();
+    renderGhosts();
   }
 
   // ----- Export -----
@@ -259,6 +311,30 @@
     infoBtn.setAttribute("aria-expanded", String(open));
   });
 
+  // ----- Settings dialog -----
+  function syncSettingsUI() {
+    ghostCountValue.textContent = String(settings.ghostCount);
+    ghostMinus.disabled = settings.ghostCount <= GHOST_MIN;
+    ghostPlus.disabled = settings.ghostCount >= GHOST_MAX;
+  }
+  function changeGhostCount(delta) {
+    settings.ghostCount = clamp(settings.ghostCount + delta, GHOST_MIN, GHOST_MAX);
+    persistSettings();
+    syncSettingsUI();
+    renderGhosts();
+  }
+  settingsBtn.addEventListener("click", () => {
+    syncSettingsUI();
+    settingsDialog.showModal();
+  });
+  settingsClose.addEventListener("click", () => settingsDialog.close());
+  ghostMinus.addEventListener("click", () => changeGhostCount(-1));
+  ghostPlus.addEventListener("click", () => changeGhostCount(1));
+  // click on the backdrop (outside the body) closes the dialog
+  settingsDialog.addEventListener("click", (e) => {
+    if (e.target === settingsDialog) settingsDialog.close();
+  });
+
   // ----- Helpers -----
   function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
   function escapeHtml(s) {
@@ -274,6 +350,7 @@
 
   // ----- Init -----
   renderHistory();
+  renderGhosts();
   refreshIcons();
 
   // ----- PWA service worker -----

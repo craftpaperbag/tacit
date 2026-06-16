@@ -16,9 +16,14 @@
     <!-- 1. Header -->
     <header class="header">
       <h1 class="brand">Tacit</h1>
-      <button id="infoBtn" class="icon-btn" type="button" aria-label="情報" aria-expanded="false">
-        <i data-lucide="info"></i>
-      </button>
+      <div class="header-actions">
+        <button id="settingsBtn" class="icon-btn" type="button" aria-label="設定">
+          <i data-lucide="settings"></i>
+        </button>
+        <button id="infoBtn" class="icon-btn" type="button" aria-label="情報" aria-expanded="false">
+          <i data-lucide="info"></i>
+        </button>
+      </div>
     </header>
 
     <p id="infoPanel" class="info-panel" hidden>
@@ -77,6 +82,33 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Settings -->
+  <dialog id="settingsDialog" class="dialog" aria-labelledby="settingsTitle">
+    <div class="dialog-body">
+      <div class="dialog-head">
+        <h2 id="settingsTitle" class="dialog-title">設定</h2>
+        <button id="settingsClose" class="icon-btn" type="button" aria-label="閉じる">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <span class="setting-name">過去の点の表示数</span>
+          <span class="setting-desc">グラフに薄く重ねる直前の記録の数</span>
+        </div>
+        <div class="stepper">
+          <button id="ghostMinus" class="stepper-btn" type="button" aria-label="減らす">
+            <i data-lucide="minus"></i>
+          </button>
+          <span id="ghostCountValue" class="stepper-value" aria-live="polite">3</span>
+          <button id="ghostPlus" class="stepper-btn" type="button" aria-label="増やす">
+            <i data-lucide="plus"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="./app.js"></script>

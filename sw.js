@@ -1,5 +1,5 @@
 // Tacit — minimal service worker (cache-first for app shell)
-const CACHE = "tacit-aa9d47bc";
+const CACHE = "tacit-6c6dc772";
 const ASSETS = [
   "./",
   "./index.html",
