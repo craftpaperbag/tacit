@@ -15,7 +15,19 @@
   const historyList = document.getElementById("historyList");
   const emptyState = document.getElementById("emptyState");
   const countEl = document.getElementById("count");
-  const copyBtn = document.getElementById("copyBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const exportDialog = document.getElementById("exportDialog");
+  const exportClose = document.getElementById("exportClose");
+  const exportSummary = document.getElementById("exportSummary");
+  const exportCopyBtn = document.getElementById("exportCopyBtn");
+  const exportDownloadBtn = document.getElementById("exportDownloadBtn");
+  const importFile = document.getElementById("importFile");
+  const importDialog = document.getElementById("importDialog");
+  const importClose = document.getElementById("importClose");
+  const importSummary = document.getElementById("importSummary");
+  const importMerge = document.getElementById("importMerge");
+  const importReplace = document.getElementById("importReplace");
   const infoBtn = document.getElementById("infoBtn");
   const infoPanel = document.getElementById("infoPanel");
   const settingsBtn = document.getElementById("settingsBtn");
@@ -140,8 +152,8 @@
 
   // ----- Toast -----
   let toastTimer = null;
-  function showToast(msg) {
-    toast.innerHTML = `<i data-lucide="check"></i><span>${escapeHtml(msg)}</span>`;
+  function showToast(msg, icon = "check") {
+    toast.innerHTML = `<i data-lucide="${icon}"></i><span>${escapeHtml(msg)}</span>`;
     toast.hidden = false;
     refreshIcons();
     // restart enter animation
@@ -179,7 +191,7 @@
     historyList.innerHTML = "";
     countEl.textContent = String(logs.length);
     todayCount.textContent = String(logs.filter((l) => isToday(l.timestamp)).length);
-    copyBtn.disabled = logs.length === 0;
+    exportBtn.disabled = logs.length === 0;
     emptyState.hidden = logs.length > 0;
 
     for (const item of logs) {
@@ -273,9 +285,29 @@
     renderGhosts();
   }
 
-  // ----- Export -----
+  // ----- Export / Import -----
+  // Build the count + date-range summary shown before exporting or importing.
+  function summaryHTML(arr) {
+    const count = arr.length;
+    const times = arr
+      .map((l) => new Date(l.timestamp).getTime())
+      .filter((t) => Number.isFinite(t));
+    const fmt = (t) => formatTime(new Date(t).toISOString());
+    const oldest = times.length ? fmt(Math.min(...times)) : "—";
+    const newest = times.length ? fmt(Math.max(...times)) : "—";
+    return (
+      `<div class="summary-row"><dt>件数</dt><dd>${count} 件</dd></div>` +
+      `<div class="summary-row"><dt>最も古い記録</dt><dd>${oldest}</dd></div>` +
+      `<div class="summary-row"><dt>最も新しい記録</dt><dd>${newest}</dd></div>`
+    );
+  }
+
+  function exportText() {
+    return JSON.stringify(logs, null, 2);
+  }
+
   async function copyJSON() {
-    const text = JSON.stringify(logs, null, 2);
+    const text = exportText();
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -294,19 +326,115 @@
 
   let copyTimer = null;
   function showCopied() {
-    copyBtn.classList.add("copied");
-    copyBtn.innerHTML = '<i data-lucide="check"></i><span id="copyLabel">Copied!</span>';
+    exportCopyBtn.classList.add("copied");
+    exportCopyBtn.innerHTML = '<i data-lucide="check"></i>コピーしました';
     refreshIcons();
     clearTimeout(copyTimer);
     copyTimer = setTimeout(() => {
-      copyBtn.classList.remove("copied");
-      copyBtn.innerHTML =
-        '<i data-lucide="copy"></i><span id="copyLabel">JSONとしてコピー</span>';
+      exportCopyBtn.classList.remove("copied");
+      exportCopyBtn.innerHTML = '<i data-lucide="copy"></i>コピー';
       refreshIcons();
     }, 1800);
   }
 
-  copyBtn.addEventListener("click", copyJSON);
+  function downloadJSON() {
+    const blob = new Blob([exportText()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tacit-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  exportBtn.addEventListener("click", () => {
+    exportSummary.innerHTML = summaryHTML(logs);
+    refreshIcons();
+    exportDialog.showModal();
+  });
+  exportClose.addEventListener("click", () => exportDialog.close());
+  exportDialog.addEventListener("click", (e) => {
+    if (e.target === exportDialog) exportDialog.close();
+  });
+  exportCopyBtn.addEventListener("click", copyJSON);
+  exportDownloadBtn.addEventListener("click", downloadJSON);
+
+  // --- Import ---
+  let pendingImport = null;
+
+  // Accept only well-formed entries, coercing them to the canonical shape so a
+  // hand-edited or partial file can't corrupt storage.
+  function sanitizeEntry(e) {
+    if (!e || typeof e !== "object") return null;
+    const x = Math.round(Number(e.x));
+    const y = Math.round(Number(e.y));
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (typeof e.timestamp !== "string" || isNaN(new Date(e.timestamp))) return null;
+    return {
+      id: e.id != null ? String(e.id) : String(Date.now()) + Math.random().toString(36).slice(2, 7),
+      timestamp: e.timestamp,
+      x: clamp(x, 0, 100),
+      y: clamp(y, 0, 100),
+      note: typeof e.note === "string" ? e.note : "",
+    };
+  }
+
+  function parseImport(text) {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error("JSON配列ではありません");
+    const cleaned = data.map(sanitizeEntry).filter(Boolean);
+    if (cleaned.length === 0) throw new Error("有効な記録が見つかりません");
+    return cleaned;
+  }
+
+  // logs are kept newest-first
+  function sortLogs(arr) {
+    return arr.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }
+
+  function applyImport(mode) {
+    if (!pendingImport) return;
+    if (mode === "replace") {
+      logs = sortLogs(pendingImport);
+    } else {
+      const map = new Map();
+      for (const l of logs) map.set(l.id, l);
+      for (const l of pendingImport) if (!map.has(l.id)) map.set(l.id, l);
+      logs = sortLogs([...map.values()]);
+    }
+    const added = pendingImport.length;
+    pendingImport = null;
+    editingId = null;
+    persist();
+    dot.hidden = true; // the live dot no longer matches logs[0]
+    renderHistory();
+    renderGhosts();
+    importDialog.close();
+    showToast(mode === "replace" ? `${added} 件で置き換えました` : `${added} 件を読み込みました`);
+  }
+
+  importBtn.addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", async () => {
+    const file = importFile.files[0];
+    importFile.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    try {
+      pendingImport = parseImport(await file.text());
+      importSummary.innerHTML = summaryHTML(pendingImport);
+      refreshIcons();
+      importDialog.showModal();
+    } catch (err) {
+      showToast("読み込めませんでした（" + (err.message || "不正なファイル") + "）", "alert-triangle");
+    }
+  });
+  importClose.addEventListener("click", () => { pendingImport = null; importDialog.close(); });
+  importDialog.addEventListener("click", (e) => {
+    if (e.target === importDialog) { pendingImport = null; importDialog.close(); }
+  });
+  importMerge.addEventListener("click", () => applyImport("merge"));
+  importReplace.addEventListener("click", () => applyImport("replace"));
 
   // ----- Info toggle -----
   infoBtn.addEventListener("click", () => {

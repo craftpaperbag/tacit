@@ -72,10 +72,13 @@
         <p id="emptyState" class="empty-state">まだ記録がありません。</p>
       </section>
 
-      <!-- 4. Export -->
+      <!-- 4. Export / Import -->
       <section class="export-section">
-        <button id="copyBtn" class="btn btn-ghost" type="button" disabled>
-          <i data-lucide="copy"></i><span id="copyLabel">JSONとしてコピー</span>
+        <button id="exportBtn" class="btn btn-ghost" type="button" disabled>
+          <i data-lucide="download"></i>エクスポート
+        </button>
+        <button id="importBtn" class="btn btn-ghost" type="button">
+          <i data-lucide="upload"></i>インポート
         </button>
       </section>
     </main>
@@ -114,6 +117,50 @@
         </div>
         <button id="clearDataBtn" class="btn btn-danger" type="button">
           <i data-lucide="trash-2"></i>削除
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Export -->
+  <dialog id="exportDialog" class="dialog" aria-labelledby="exportTitle">
+    <div class="dialog-body">
+      <div class="dialog-head">
+        <h2 id="exportTitle" class="dialog-title">エクスポート</h2>
+        <button id="exportClose" class="icon-btn" type="button" aria-label="閉じる">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <dl id="exportSummary" class="data-summary"></dl>
+      <div class="dialog-actions">
+        <button id="exportCopyBtn" class="btn btn-ghost" type="button">
+          <i data-lucide="copy"></i>コピー
+        </button>
+        <button id="exportDownloadBtn" class="btn btn-primary" type="button">
+          <i data-lucide="download"></i>ファイルを保存
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Import (file picker is hidden; opens the confirm dialog below) -->
+  <input id="importFile" type="file" accept="application/json,.json" hidden />
+  <dialog id="importDialog" class="dialog" aria-labelledby="importTitle">
+    <div class="dialog-body">
+      <div class="dialog-head">
+        <h2 id="importTitle" class="dialog-title">インポート</h2>
+        <button id="importClose" class="icon-btn" type="button" aria-label="閉じる">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <dl id="importSummary" class="data-summary"></dl>
+      <p class="dialog-text">「追加」は既存の記録に統合します。「置き換え」は今ある記録をすべて削除してから読み込みます。</p>
+      <div class="import-actions">
+        <button id="importMerge" class="btn btn-primary" type="button">
+          <i data-lucide="plus"></i>追加
+        </button>
+        <button id="importReplace" class="btn btn-danger" type="button">
+          <i data-lucide="replace"></i>置き換え
         </button>
       </div>
     </div>
