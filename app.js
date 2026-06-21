@@ -45,6 +45,7 @@
   let logs = load();
   let settings = loadSettings();
   let editingId = null; // id of the entry whose note is being edited
+  let dotId = null; // id of the entry the live dot currently represents
 
   // ----- Storage -----
   function load() {
@@ -143,6 +144,7 @@
       note: "",
     };
     logs.unshift(entry);
+    dotId = entry.id; // the live dot now represents this entry
     persist();
     renderHistory();
     renderGhosts();
@@ -279,6 +281,11 @@
 
   function removeLog(id) {
     if (editingId === id) editingId = null;
+    // if the deleted entry is the one shown by the live dot, clear the dot too
+    if (dotId === id) {
+      dotId = null;
+      dot.hidden = true;
+    }
     logs = logs.filter((l) => l.id !== id);
     persist();
     renderHistory();
@@ -408,6 +415,7 @@
     pendingImport = null;
     editingId = null;
     persist();
+    dotId = null;
     dot.hidden = true; // the live dot no longer matches logs[0]
     renderHistory();
     renderGhosts();
@@ -472,6 +480,7 @@
     logs = [];
     editingId = null;
     persist();
+    dotId = null;
     dot.hidden = true;
     renderHistory();
     renderGhosts();
